@@ -1,0 +1,6 @@
+.env
+__pycache__/
+dump/
+data/
+submissions/
+.vscode/

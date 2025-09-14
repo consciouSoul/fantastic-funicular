@@ -1,0 +1,30 @@
+name: Fetch 
+
+on:
+  workflow_dispatch:
+
+jobs:
+  doing:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -U pip && pip install -r requirements.txt
+
+      - name: Do task
+        env:
+          MONGOURI: ${{ secrets.MONGOURI }}
+          PASS: ${{ secrets.PASS }}
+        run: python3 main.py

@@ -1,0 +1,6 @@
+httpx
+bs4
+lxml
+pymongo[srv]
+python-dotenv
+# tqdm
