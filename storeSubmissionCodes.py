@@ -6,9 +6,10 @@ from typing import Tuple
 from localDB import LocalSQLite
 from tqdm.asyncio import tqdm
 from dotenv import load_dotenv
+from helper import findLastSubmissionID
 
 START = 1
-END = 1791585
+END = findLastSubmissionID()
 PROGRESS_FILE = "data/progress.json"
 PASS = str(os.environ.get("PASS")).strip()
 
@@ -17,14 +18,11 @@ db = LocalSQLite("3.19")
 
 
 def load_progress():
-    last_db_id = db.getLastSubmissionId()
-    if last_db_id:
-        return last_db_id
-    
     if os.path.exists(PROGRESS_FILE):
         with open(PROGRESS_FILE, "r") as f:
             data = json.load(f)
             return data.get("last_processed", START - 1)
+
     return START - 1
 
 
@@ -52,11 +50,11 @@ async def fetch_submission(c: httpx.AsyncClient, i: int) -> Tuple[int, str, bool
     url = f"https://toph.co/s/{i}/source"
     max_retries = 3
     retry_delay = 5
-    
+
     for attempt in range(max_retries):
         try:
             r = await c.get(url)
-            
+
             if r.status_code == 429:
                 print(f"Rate limit hit for submission {i}. Exiting.")
                 exit(1)
@@ -65,10 +63,12 @@ async def fetch_submission(c: httpx.AsyncClient, i: int) -> Tuple[int, str, bool
                 return i, r.text, True
             else:
                 return i, "", False
-                
+
         except httpx.HTTPError as e:
             if attempt < max_retries - 1:
-                print(f"\nNetwork error for submission {i}, attempt {attempt + 1}/{max_retries}. Error: {e}")
+                print(
+                    f"\nNetwork error for submission {i}, attempt {attempt + 1}/{max_retries}. Error: {e}"
+                )
                 print(f"Waiting {retry_delay} seconds before retrying...")
                 await asyncio.sleep(retry_delay)
                 continue
@@ -112,16 +112,16 @@ async def main():
                 while True:
                     try:
                         submission_id, content, success = await fetch_submission(c, i)
-                        
+
                         if success:
                             db.storeCode(submission_id, content)
                         else:
                             failed.append(submission_id)
-                        
+
                         save_progress(i)
                         pbar.set_postfix({"current": i, "failed": len(failed)})
                         break
-                        
+
                     except Exception as e:
                         print(f"\nRetrying submission {i} due to error: {e}")
                         await asyncio.sleep(5)
